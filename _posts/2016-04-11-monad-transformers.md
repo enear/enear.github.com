@@ -120,7 +120,7 @@ def getEmployeeAge(employeeId: String, companyName: String): Future[Option[Int]]
 The only changes here when compared to the previous example is that we're now using the `OptionT.fromOption` function in the first case, and the `OptionT.liftF` function in the second one. The `fromOption` function creates an `OptionT` from an `Option` monad. It is internally wrapping the return of the `getCompany` function in a `Future.successful` call. The `liftF` function lifts any monad `F` into an `OptionT`. Internally, it is calling the `map` function from the `Future` monad and wrapping the returned `EmployeeWithDetails` in a `Some`. It is important to note that this is just an example and there are more monad transformers like `EitherT`, `ListT`, etc, in both cats and scalaz.
 
 ## Conclusion
-I hope you enjoyed this post and feel like getting started with function composition using multiple monads. The code used for this post is available at [E.Near's Monad Transformers](TODO:PUT LINK).
+I hope you enjoyed this post and feel like getting started with function composition using multiple monads. The code used for this post is available at [E.Near's Monad Transformers](https://github.com/enear/Monad-Transformers-Tutorial).
 
 Detailed explanations about monads and monad transformation can be found at:
 
