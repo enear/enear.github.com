@@ -27,11 +27,13 @@ trait SyncDBOps {
 ```
 
 From this simple design, the following conclusions are derived:
+
  1. An `Employee` is either an `EmployeeWithDetails` or an `EmployeeWithoutDetails`
  2. A `Company` has a name and a list of employees without their details
  3. A `SyncDBOps` can fetch a `Company` by its name and an `EmployeeWithDetails` by its id.
  
 Suppose we want to create a new software layer on top of this API and expose a single function with the following specification:
+
  1. Receives two strings - `companyName ; employeeId`
  2. Gets a company using `companyName`
  3. Verifies if that company has an employee with id equal to `employeeId`
@@ -99,7 +101,7 @@ As you can see, this snippet is nearly equal to the one provided in the first ex
 With `OptionT`, if the `Future` returns `Failure` or the `Option` returns `None`, the function will immediatelly return with that value. Other than the `OptionT` apply function, only the `.value` function is called. This function transforms the `OptionT` monad back into a `Future[Option[Company]]`. By using `OptionT` we have removed our biggest issue in the previous example where we were changing the semantics of the application when composing functions that used two monads. You can get more details about the implementation of `OptionT` and other monad transformers by going to the cats documentation provided at the end of this post.
 
 ## More use cases for monad transformation
-Monad transformers aren't only used when composing functions that return two monads in the form M[F[T]] where M and F are distinct monads like in our previous example of `Future[Option[Company]]`. Suppose the API was changed into the following two functions:
+Monad transformers aren't only used when composing functions that return two monads in the form `M[F[T]]` where `M` and `F` are distinct monads like in our previous example of `Future[Option[Company]]`. Suppose the API was changed into the following two functions:
 
 ```scala
 trait HybridDBOps {
@@ -123,7 +125,7 @@ def getEmployeeAge(employeeId: String, companyName: String): Future[Option[Int]]
 The only changes here when compared to the previous example is that we're now using the `OptionT.fromOption` function in the first case, and the `OptionT.liftF` function in the second one. The `fromOption` function creates an `OptionT` from an `Option` monad. It is internally wrapping the return of the `getCompany` function in a `Future.successful` call. The `liftF` function lifts any monad `F` into an `OptionT`. Internally, it is calling the `map` function from the `Future` monad and wrapping the returned `EmployeeWithDetails` in a `Some`. It is important to note that this is just an example and there are more monad transformers like `EitherT`, `ListT`, etc, in both cats and scalaz.
 
 ## Conclusion
-I hope you enjoyed this post and feel like getting started with function composition using multiple monads. The code used for this post is available at [E.Near's Monad Transformers](TODO:PUT LINK).
+I hope you enjoyed this post and feel like getting started with function composition using multiple monads. The code used for this post is available at [E.Near's Monad Transformers](https://github.com/enear/Monad-Transformers-Tutorial).
 
 Detailed explanations about monads and monad transformation can be found at:
 
