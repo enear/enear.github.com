@@ -6,7 +6,7 @@ title: Building Web applications with Scala.js and React - Part 1
 
 As a Scala programmer developing Web applications, it is usually uncomfortable to move from a tidy, functional, and type-safe Scala back-end to an often subpar JavaScript front-end. Luckily for us, there are already some strong and mature alternatives to the Web's (not so) lovely *lingua franca*.
 
-[**Scala.js**](https://www.scala-js.org/) is an implementation of Scala, authored by [Sébastien Doeraene](https://github.com/sjrd), which compiles Scala code to JavaScript (as opposed to JVM bytecode). It supports full bilateral interoperability between Scala and JavaScript code and therefore allows us to develop front-end Web applications in Scala using JavaScript libraries and frameworks. It also promotes less code duplication for a typical Scala Web application by allowing us to reuse the models developed for the back-end on the front-end.
+[**Scala.js**](https://www.scala-js.org/) is an implementation of Scala, authored by [Sébastien Doeraene](https://github.com/sjrd), which compiles Scala code to JavaScript (as opposed to JVM bytecode). It supports full bilateral interoperability between Scala and JavaScript code and therefore allows us to develop front-end Web applications in Scala using JavaScript libraries and frameworks. It also promotes less code duplication for a typical Scala Web application by allowing us to reuse the models and business logic developed for the back-end on the front-end.
 
 [**React**](https://facebook.github.io/react/), on the other hand, is a Web framework for building user interfaces in JavaScript, developed and maintained by Facebook and other companies. It promotes a clean separation between declaratively updating the application state as a response to user events and the rendering of the views based on said state. The React framework is therefore particularly suited for the functional programming approach we use when programming in Scala.
 
@@ -313,4 +313,4 @@ def searchForArtist(name: String) = Callback.future {
 
 That concludes the tutorial. If you've made it this far, you should now be able to model front-end Web applications using purely functional constructs in Scala.js. If I've picked your interest, be sure to check out both [Scala.js](https://www.scala-js.org/doc/index.html)'s and [scalajs-react](https://github.com/japgolly/scalajs-react/blob/master/doc/USAGE.md)'s documentation.
 
-Keep posted for part 2, which will focus on building a full-stack Scala Web application and how we can share a set of models between back-end and front-end code.
+Keep posted for part 2, which will focus on building a full-stack Scala Web application and how we can share a set of models and common logic between back-end and front-end code.
