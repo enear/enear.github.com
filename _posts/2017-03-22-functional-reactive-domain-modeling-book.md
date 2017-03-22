@@ -3,7 +3,7 @@ title: "Book Review: Functional and Reactive Domain Modelling"
 author: ragb
 ---
 
-The Book [functional and reactive domain Modelling][book] ([Debasish Ghosh][debasish]) is one of the most interesting books I have read lately, in the realm of Scala.
+The Book [Functional and Reactive Domain Modeling][book] ([Debasish Ghosh][debasish]) is one of the most interesting books I have read lately, in the realm of Scala.
 This is not another beginner Scala book, neither a functional programming primer. It is a much needed tour on domain modeling with functional patterns and concepts, reactive systems and modern software development in Scala. If you want to know how in the world one can use Akka streams, free monads and actors interacting with each other, this book is a great starting point :).
 
 The book is divided roughly into two parts: the first covering functional domain modeling and the second one reactive systems.
