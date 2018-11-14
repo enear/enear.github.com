@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Type constraints for code reuse and readability
+title: Constraining data types for code reuse and readability
 author: jguitana
 ---
 
