@@ -16,7 +16,7 @@ Maybe just take Int for performance reasons? Well, not all abstractions are free
 
 Maybe we will use negative numbers in the future? Well, first the program must run in the present. Refactoring constraints is Ok, the compiler will help.
 
-Will our program be correct if we do use Int? It might, but we will have to test the case when Int goes negative. This is what is meant by reducing implementation space. Using Nat achieves this, but Int will not. So we end up by having to write extra tests. We can see that in a dynamic language with no types, everything is unconstrained to some primitive types, thus all implementations must be tested.
+Will our program be correct if we do use Int? It might, but we will have to test the case when Int goes negative. This is what is meant by reducing implementation space. Using Nat achieves this, but Int will not. So we end up having to write extra tests. We can see that in a dynamic language with no types, everything is unconstrained to some primitive types, thus all implementations must be tested.
 
 We've made a quick mental exercise on the cases above and we can see downsides and upsides as with most things. The bottom line is that if we are not solving a C10k like problem, we are probably better off building a more readable, smaller, well constrained program.
 
