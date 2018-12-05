@@ -11,7 +11,7 @@ As in any show-house, there are many types of seats; some are standing, some nor
 
 
 
-As a restriction from the opera house, both buyer and guest must be on the same seating area. It is not permitted for one ticket to be standing while the other for the normal seated area for example.  
+As a restriction from the opera house, both buyer and guest must be on the same seating area. For example, it is not permitted for one ticket to be standing while the other for the normal seated area.  
 I believe this is what people call an invariant. A requirement that must hold for the data to have meaning.  
 How to enforce then this constraint ?  
 Let us first define the data types relevant to the problem:  
@@ -20,14 +20,14 @@ Let us first define the data types relevant to the problem:
 ```scala
 sealed trait Seat
 
-case class Seated(row: Int, column: Int) extends Seat
-case class Tribune(tribuneId: String) extends Seat
+case class NormalSeat(row: Int, column: Int) extends Seat
+case class VipTribune(tribuneId: String) extends Seat
 case object Standing extends Seat
 ```
 
 In what follows it will be useful to discern the type relation above on the following diagram.
 
-<img class=" size-full wp-image-397 aligncenter" src="https://aerodatablog.files.wordpress.com/2018/12/typehiearchy1.png" alt="ActionBuilder" />  
+<img class=" size-full wp-image-397 aligncenter" src="https://aerodatablog.files.wordpress.com/2018/12/typehiearchy1.png" alt="Type Hiearchy" />  
 
 We also have:  
 
@@ -51,34 +51,34 @@ The first thing to notice is that the above does not deliver what we want. The f
 
 ```scala
 val reservation = Reservation(
-  usertTicket = Ticket("id1", 123, VipTribuneSeat("east")),
+  usertTicket = Ticket("id1", 123, VipTribune("east")),
   guestTicket = Ticket("id2", 123, Standing)
 )
 ```
 
-The compiler tries to infer the type <code>SeatType</code>for reservation. From the user ticket on line 2 it thinks it is <code>VipTribuneSeat</code>. The compiler is satisfied since this a sub-type of <code>Seat</code> which is an upper type bound on Reservation. This is contradicted on the 3rd line, as we encounter type <code>Standing</code> for the guest ticket. Bad news since type <code>SeatType</code> only line 2 and <code>SeatType</code> on line 3 refer, well, to the same type!  
-Before launching an error, the compiler realizes both <code>Standing </code> and <code>VipTribuneSeat</code> are actually of sub-types of <code>Seat</code> ; this means they can pretend to be their super-type (<code>Seat</code>). Because <code>Seat</code> respects the type bound <code>Seat</code> <:  <code>Seat</code>, the compilation is successful with val reservation: Reservation[Seat].
+The compiler tries to infer the type <code>SeatType</code>for reservation. From the user ticket on line 2 it thinks it is <code>VipTribune</code>. The compiler is satisfied since this is a sub-type of <code>Seat</code> which is an upper type bound on Reservation. This is contradicted on the 3rd line, as we encounter type <code>Standing</code> for the guest ticket. Bad news since type <code>SeatType</code> on line 2 and <code>SeatType</code> on line 3 refer, well, to the same type!  
+Before launching an error, the compiler realizes both <code>Standing</code> and <code>VipTribune</code> are actually sub-types of <code>Seat</code>; this means they can pretend to be their super-type (<code>Seat</code>). Because <code>Seat</code> respects the type bound <code>Seat</code> <:  <code>Seat</code>, the compilation is successful with val reservation: <code>Reservation[Seat]</code>.
 
 <strong> There are at least 4 ways to enforce the restriction of the opera-house: </strong>
 
 
-1. using require(condition) on the class constructor of Reservation  
+1. Using require(condition) on the class constructor of Reservation  
 2. Hiding the public constructor of the class, defining a public one that validates and returns Option[Reservation]
-3. Using generalized type constrains.
+3. Using generalized type constrains
 4. Using OOP - subtyping
 
 
-# Using require(condition) on the class constructor of Reservation
+# 1. Using require(condition) on the class constructor of Reservation
 
 ```scala
-case class Reservation[SeatInfo <: Seat](
-  userTicket: Ticket[SeatInfo],
-  guestTicket: Ticket[SeatInfo]
+case class Reservation[SeatType <: Seat](
+  userTicket: Ticket[SeatType],
+  guestTicket: Ticket[SeatType]
 ){
 
   private def verifyTypeRestriction: Boolean = (userTicket.seat, guestTicket.seat) match {
     case (NormalSeat(_, _), NormalSeat(_, _)) => true
-    case (VipTribuneSeat(_), VipTribuneSeat(_)) => true
+    case (VipTribune(_), VipTribune(_)) => true
     case (_: Standing.type , _: Standing.type ) => true
     case _ => false
   }
@@ -89,7 +89,7 @@ case class Reservation[SeatInfo <: Seat](
 
 On this approach we delegate to the users of case class Reservation the responsibility of never trying to instantiate a value that does not conform to the rules. If they do breach the rule, the code compiles but throws an exception at run time.  
 
-While this is the least adequate of the solutions, we can the peace of mind that, if it does blow up, it will do so on instantiation of the object. Meaning that some other block of code further down can expect the invariant to be respected and avoid dealing with the inconsistent cases (since if the block of code is being executed, the previous instantiation succeed). We have centralized the point of failure to the instantiation of an object.  
+While this is the least adequate of the solutions, we can have the peace of mind that, if it does blow up, it will do so on instantiation of the object. Meaning that some other block of code further down can expect the invariant to be respected and avoid dealing with the inconsistent cases (since if the block of code is being executed, the previous instantiation succeed). We have centralized the point of failure to the instantiation of the object.  
 
 Notice lastly that extending Reservation does not bypass the constructor, so that the <strong>require(condition)</strong> will always be executed.  
 
@@ -98,7 +98,7 @@ Notice lastly that extending Reservation does not bypass the constructor, so tha
 
 
 The idea here is to make it impossible for future users of Reservation to create an instance directly but only through one single method, engineered by us to take into account unlawful constructor parameters. The method ought to return a Reservation boxed in a data type that allows to represent something went wrong like the <code>Option</code>/<code>Try</code>/<code>Either</code>.  
-It is then the responsibility of the user of the method to deal with the returned boxed type accordingly.
+It is then the responsibility of the user to deal with the returned boxed type accordingly.
 
 There are two ways to achieve this. The sub chapter 19.2 in <a id="mmds-ref" href="#programming-in-scala">[1]</a> is useful in what follows.  
 
@@ -106,9 +106,9 @@ There are two ways to achieve this. The sub chapter 19.2 in <a id="mmds-ref" hre
 The first is by adding <strong>private</strong> before the parameter list of the class, and then defining an <strong>apply</strong> method on the companion object.  
 
 ```scala
-class Reservation[SeatInfo <: Seat] private (
-  userTicket: Ticket[SeatInfo],
-  guestTicket: Ticket[SeatInfo]
+class Reservation[SeatType <: Seat] private (
+  userTicket: Ticket[SeatType],
+  guestTicket: Ticket[SeatType]
 )
 ```
 
@@ -116,9 +116,9 @@ While one does not need to name the method <strong>apply</strong>, it must be on
 
 ```scala
 object Reservation {
-  def apply[SeatedInfo <:Seat]( userTicket: Ticket[SeatedInfo], guestTicket: Ticket[SeatedInfo]): Option[Reservation[SeatedInfo]] = (userTicket.seat, guestTicket.seat) match {
+  def apply[SeatType <:Seat]( userTicket: Ticket[SeatType], guestTicket: Ticket[SeatType]): Option[Reservation[SeatType]] = (userTicket.seat, guestTicket.seat) match {
     case (NormalSeat(_, _), NormalSeat(_, _)) => Some(new Reservation(userTicket, guestTicket))
-    case (VipTribuneSeat(_), VipTribuneSeat(_)) => Some(new Reservation(userTicket, guestTicket))
+    case (VipTribune(_), VipTribune(_)) => Some(new Reservation(userTicket, guestTicket))
     case (_: Standing.type , _: Standing.type ) => Some(new Reservation(userTicket, guestTicket))
     case _ => None
   }
@@ -131,23 +131,25 @@ As an alternative, one can hide the case class altogether, i.e. not only the con
 
 
 ```scala
-sealed trait Reservation[SeatInfo <: Seat] {
-  val userTicket: Ticket[SeatInfo]
-  val guestTicket: Ticket[SeatInfo]
+sealed trait Reservation[SeatType <: Seat] {
+  val userTicket: Ticket[SeatType]
+  val guestTicket: Ticket[SeatType]
 }
 ```
+
+and on the companion object we have the actual implementation:
 
 ```scala
 object Reservation {
 
-  private case class ReservationImpl[SeatInfo <: Seat](
-    userTicket: Ticket[SeatInfo],
-    guestTicket: Ticket[SeatInfo]
-  ) extends Reservation[SeatInfo]
+  private case class ReservationImpl[SeatType <: Seat](
+    userTicket: Ticket[SeatType],
+    guestTicket: Ticket[SeatType]
+  ) extends Reservation[SeatType]
 
-  def apply[SeatedInfo <: Seat](userTicket: Ticket[SeatedInfo], guestTicket: Ticket[SeatedInfo]): Option[Reservation[SeatedInfo]] = (userTicket.seat, guestTicket.seat) match {
+  def apply[SeatType <: Seat](userTicket: Ticket[SeatType], guestTicket: Ticket[SeatType]): Option[Reservation[SeatType]] = (userTicket.seat, guestTicket.seat) match {
     case (NormalSeat(_, _), NormalSeat(_, _)) => Some(ReservationImpl(userTicket, guestTicket))
-    case (VipTribuneSeat(_), VipTribuneSeat(_)) => Some(ReservationImpl(userTicket, guestTicket))
+    case (VipTribune(_), VipTribune(_)) => Some(ReservationImpl(userTicket, guestTicket))
     case (_: Standing.type , _: Standing.type ) => Some(ReservationImpl(userTicket, guestTicket))
     case _ => None
   }
@@ -161,17 +163,17 @@ This approach has a disadvantage concerning type erasure which also plagues the 
 
 # 3. Using generalized type constrains
 
-This is the most novel of the approaches and, as far as I know, could not be achieved by Java, contrary to the remaining solutions.  
+This is the most novel of the approaches and, as far as I know, could not be achieved on Java, contrary to the remaining solutions.  
 
-Let us recall the original problem. On:  
+Let us recall the original problem. On  
 
 ```scala
-case class Reservation[SeatInfo <: Seat](
-  userTicket: Ticket[SeatInfo],
-  guestTicket: Ticket[SeatInfo]
+case class Reservation[SeatType <: Seat](
+  userTicket: Ticket[SeatType],
+  guestTicket: Ticket[SeatType]
 )
 ```
-the compiler can impose <code>SeatInfo</code> to have as upper bound the type <code>Seat</code>. It cannot however impose <code>SeatInfo</code> to be one of the sub-types exclusively. Meaning that upon userTicket: <code>Ticket[VipTribune]</code> and guestTicket: <code>Ticket[NormalSeat]</code>, both <code>VipTribune</code> and <code>NormalSeat</code> can pretend to be type <code>Seat</code> which would result in userTicket: <code>Ticket[Seat]</code> and guestTicket: <code>Ticket[Seat]</code> which in turn conforms with the upper bound constraint (Reservation[SeatInfo <: Seat]). The issue really is that a given type A is a subtype of itself.
+the compiler can impose <code>SeatType</code> to have as upper bound the type <code>Seat</code>. It cannot however impose <code>SeatType</code> to be one of the sub-types exclusively. Meaning that upon userTicket: <code>Ticket[VipTribune]</code> and guestTicket: <code>Ticket[NormalSeat]</code>, both <code>VipTribune</code> and <code>NormalSeat</code> can pretend to be type <code>Seat</code> which would result in userTicket: <code>Ticket[Seat]</code> and guestTicket: <code>Ticket[Seat]</code> which in turn conforms with the upper bound constraint (Reservation[SeatType <: Seat]). The issue really is that a given type <code>A</code> is a subtype of itself.
 
 <img class=" size-full wp-image-397 aligncenter" src="https://aerodatablog.files.wordpress.com/2018/12/typehiearchy1.png" alt="ActionBuilder" />      
 
@@ -179,44 +181,43 @@ the compiler can impose <code>SeatInfo</code> to have as upper bound the type <c
 The trick on this approach is to use a generalized type constraint. These are not built-in features of the language (like type bounds) but rather smart ways some smart people have engineered to leverage the type system of Scala to accomplish some more impressive things.
 
 
-There are 2 or 3 generalized type constraints on the standard library of Scala on package scala.Predef which is imported by default. One of the most famous is <code> <:< </code>.
+There are 2 or 3 generalized type constraints on the standard library of Scala on package **scala.Predef** which is imported by default. One of the most famous is <code><:<</code>.
 
-The two we are going to use are found on the external library Shapeless by Miles Sabin.
+The one we are going to use is found on the external library <a id="shapeless-ref" href="#shapeless"> Shapeless </a> by Miles Sabin.
 
-The first is <code>=:!=[A, B]</code>. This can also be written <code>A =:!= B</code>. 
+It is written <code>=:!=[A, B]</code>; this is a parameterized trait named <code>=:!=</code> with two types. This can also be written <code>A =:!= B</code>. 
 
-I will not try to explain the intricacies of these things. A detailed explanation can be found at #here. 
-I hope to transmit a feeling on how to use them. Each of these type constraints is used with a specific goal. 
+I will not try to explain the intricacies of these things. A detailed explanation on related type constraints can be found <a id="union-types-ref" href="#union-types">here</a>. I hope to transmit a feeling on how to use them. 
 
-The goal of <code>A =:!= B</code> is to impose that types <code>A</code> and <code>B</code> are different, whatever they might be. This is accomplished via implicits. Specifically, you declare an implicit variable of type <code>A =:!= B</code>, where <code>A</code> and <code>B</code> are some two types you want to make sure are different.I would say that normally, either <code>A</code>, <code>B</code> or both are abstract/parameterized types, like the type <code>Ole</code> below.
+Each of these type constraints is used with a specific goal. The goal of <code>A =:!= B</code> is to impose that types <code>A</code> and <code>B</code> are different, whatever they might be. This is accomplished via implicits. Specifically, you declare an implicit variable of type <code>A =:!= B</code>, where <code>A</code> and <code>B</code> are some two types you want to make sure are different. I would say that normally, either <code>A</code>, <code>B</code> or both are abstract/parameterized types, like type <code>Ole</code> below.
 
 ```scala
 import shapeless.=:!=
-  def foo[Ole](a: Ole)(implicit ev: =:!=[Ole, Int]): A = a
+def foo[Ole](a: Ole)(implicit ev: =:!=[Ole, Int]): A = a
 
-  foo[String]("E.Near rocks.")   /* Compiles */
-  foo[Int](5)                    /* Does not compile */
-  foo[Boolean](true)             /* Compiles */
+foo[String]("E.Near rocks.")   /* Compiles */
+foo[Int](5)                    /* Does not compile */
+foo[Boolean](true)             /* Compiles */
 ```
 
-Briefly, if <code>Ole</code> and Int are different, the compiler will be able to (always) find the required implicit and succeed the compilation. If they are the same, something else happens and a compilation error is raised. How exactly using the syntax (implicit ev: =:!=[Ole, Int]) achieves that behavior is beyond this post and my explanation skills; it should be accepted by you as the truth.
+Briefly, if <code>Ole</code> and <code>Int</code> are different, the compiler will be able to (always) find the required implicit and succeed the compilation. If they are the same, something else happens and a compilation error is raised. How exactly using the syntax <code>(implicit ev: =:!=[Ole, Int])</code> achieves that behavior is beyond this post; it should be accepted as the truth.
 
 This can however be used to tackle our problem:
 
 ```scala
 import shapeless.=:!=
-case class Reservation[SeatInfo <: Seat](
-  userTicket: Ticket[SeatInfo],
-  guestTicket: Ticket[SeatInfo]
-)(implicit ev: SeatInfo =:!= Seat)
+case class Reservation[SeatType <: Seat](
+  userTicket: Ticket[SeatType],
+  guestTicket: Ticket[SeatType]
+)(implicit ev: SeatType =:!= Seat)
 ```
 
-The implicit evidence ev will demand the compiler to find proof that the <code>SeatInfo</code>, whatever type it might be, must not be type <code>Seat</code>. If it cannot, it throws a compilation error.  With figure 1 as guidance, because abstract type <code>SeatInfo</code> has as upper bound the concrete type <code>Seat</code>, and because of the generalized type constraint, <code>SeatInfo</code> must not be <code>Seat</code>, then it must surely only be one of <code>Standing</code>, <code>Viptribune</code> or <code>NormalSeat</code>. Problem solved. So, in contrast with the other 2 solutions so far seen, an attempt to instantiate a reservation with unsound parameters is caught during compilation:
+The implicit evidence **ev** will demand the compiler to find proof that <code>SeatType</code>, whatever type it might be, must not be type <code>Seat</code>. If it cannot, it throws a compilation error.  With figure 1 as guidance, because abstract type <code>SeatType</code> has as upper bound the concrete type <code>Seat</code>, and since given the generalized type constraint, <code>SeatType</code> must not be <code>Seat</code>, then it must surely be one of <code>Standing</code>, <code>VipTribune</code> or <code>NormalSeat</code>. Problem solved. So, in contrast with the other 2 solutions so far seen, an attempt to instantiate a reservation with unsound parameters is caught during compilation:
 
 ```scala
 val standing = Standing
 val normalSeated = NormalSeat(4, 5)
-val tribuneSeat = VipTribuneSeat("east")
+val tribuneSeat = VipTribune("east")
 
 //  Compiles
 val bar = Reservation(
@@ -248,20 +249,20 @@ ambiguous implicit values:
 [error]                           ^
 ```
 
-The error is not very helpful, but one must live with it. (footnote: answer by Régis Jean-Gilles on https://stackoverflow.com/questions/6909053/enforce-type-difference)  
+The error message is not very helpful, but one must live with it <a id="SO-answer-error-message-union-types-ref" href="#SO-answer-error-message-union-types"> ¹ </a>
 
-This approach, similarly to the 2 other approaches, suffers from an inconvenient. The type SeatInfo on a given reservation is lost at run time due to type erasure. We cannot pattern match on a given reservation as on the following example:  
+This approach, similarly to the 2 other approaches, suffers from an inconvenient. The type <code>SeatType</code> on a given reservation is lost at run time due to type erasure. We cannot pattern match on a given reservation as on the following example:  
 
 
 ```scala
 def guideUsersToTheirSeat(reservation: Reservation[Seat]): String = reservation match {
     case _: Reservation[Standing.type] => "Go to gate 1. You and your guest must stand."
-    case reser: Reservation[VipTribuneSeat] => s"Go to gate 2. Your tribune is named ${reser.guestTicket.seat.tribuneId}"
+    case reser: Reservation[VipTribune] => s"Go to gate 2. Your tribune is named ${reser.guestTicket.seat.tribuneId}"
     case reser: Reservation[NormalSeat] => s"Go to gate 3. You and your guest are in a seats ${reser.userTicket.seat.column} and ${reser.guestTicket.seat.column} respectively"
   }
   ```
   
-The method *guideUsersToTheirSeat* is useless as it will always follow the first case on the match.  
+The method **guideUsersToTheirSeat** is useless as it will always follow the first case on the match.  
 The compiler will in fact warn us of this :
 
 ```
@@ -269,7 +270,7 @@ non-variable type argument com.github.cmhteixeira.invariants.Standing.type in ty
 [warn]     case a: Reservation[Standing.type] => "Go to gate 1"
 ```
 
-Fortunately the type parameter SeatInfo on Reservation is not a phantom type. It is associated with the value of seat within each Ticket (userTicket and guestTicket) of the reservation. To avoid the above problem we must therefore pattern match on the seats of each ticket.  
+Fortunately the type parameter <code>SeatType</code> on Reservation is not a phantom type. It is associated with the value of seat within each Ticket (userTicket and guestTicket) of the reservation. To avoid the above problem we must therefore pattern match on the seats of each ticket.  
 
 ```scala
 def guideUsersToSeat(reservation: Reservation[Seat]): String = {
@@ -278,7 +279,7 @@ def guideUsersToSeat(reservation: Reservation[Seat]): String = {
 
     (userSeat, guestTicket) match {
       case (_: Standing.type, _: Standing.type ) => "Go to gate 1"
-      case (userSeat: VipTribuneSeat, _: VipTribuneSeat ) => s"Go to gate 2. Your tribune is named ${userSeat.tribuneId}"
+      case (userSeat: VipTribune, _: VipTribune ) => s"Go to gate 2. Your tribune is named ${userSeat.tribuneId}"
       case (userSeat: NormalSeat, guestSeat: NormalSeat ) => s"Go to gate 3. You and your guest are in a seats ${userSeat.column} and ${guestSeat.column} respectively"
     }
   }
@@ -288,14 +289,14 @@ The code above will work well and do what we are looking for. But we are not qui
 
 ```
 match may not be exhaustive.
-[warn] It would fail on the following inputs: (NormalSeat(_, _), Standing), (NormalSeat(_, _), VipTribuneSeat(_)), (Standing, NormalSeat(_, _)), (Standing, VipTribuneSeat(_)), (VipTribuneSeat(_), NormalSeat(_, _)), (VipTribuneSeat(_), Standing)
+[warn] It would fail on the following inputs: (NormalSeat(_, _), Standing), (NormalSeat(_, _), VipTribune(_)), (Standing, NormalSeat(_, _)), (Standing, VipTribune(_)), (VipTribune(_), NormalSeat(_, _)), (VipTribune(_), Standing)
 [warn]     (userSeat, guestTicket) match {
 [warn]     ^
 ```
 
 The compiler is concerned we might not be considering all possible combinations of seats within a reservation.   
 We are not considering for the cross cases (e.g. (Standing, NormalSeat)) because with the above tricks, we are certain that any created instance of Reservation will always respect the invariant. 
-The compiler isn’t. For it, a single Reservation[Seat] might contain tickets in different seating areas. We have to match on both tickets (user and guest) each of which, as far as the compiler goes, can be of any type (Standing, VipTribune, NormalSeated, Seat).  
+The compiler isn’t. For it, a **single** Reservation[Seat] might contain tickets in different seating areas. We have to match on both tickets (user and guest) each of which, as far as the compiler goes, can be of any type (<code>Standing</code>, <code>VipTribune</code>, <code>NormalSeated</code>, <code>Seat</code>).  
 Because we (arguably) know more than the compiler in this case, we can tell him not to be concerned with the non-exhaustive pattern match with an annotation (chapter 15.5 at <a id="mmds-ref" href="#programming-in-scala">[1]</a>):   
 
 ```scala
@@ -312,7 +313,7 @@ This is the approach most of us would follow. Probably the most pragmatic.
 It requires having a bare trait Reservation and extending it for every sub-type of Seat. When there are many sub-types, this would become very repetitive.  
 
 ```scala
-sealed trait Reservation[+SeatInfo <: Seat]
+sealed trait Reservation[+SeatType <: Seat]
 
 case class ReservationSeated(
   userTicket: Ticket[NormalSeat],
@@ -325,9 +326,9 @@ case class ReservationStanding(
 ) extends Reservation[Standing.type]
 
 case class ReservationVipTribune(
-  userTicket: Ticket[VipTribuneSeat],
-  guestTicket: Ticket[VipTribuneSeat]
-) extends Reservation[VipTribuneSeat]
+  userTicket: Ticket[VipTribune],
+  guestTicket: Ticket[VipTribune]
+) extends Reservation[VipTribune]
 ```
 
 On the other hand, all the type information is carried on at run-time. We can for example pattern match with confidence:  
@@ -342,12 +343,17 @@ def guideUsersToSeat(reservation: Reservation[Seat]): String = reservation match
 
 And because none of our sub-typed Reservation classes has tickets with seats of different types, the invariant is always assured.  
 
-Simultaneously posted at []()https://aerodatablog.wordpress.com/
+This post is also on the author's blog at []()https://aerodatablog.wordpress.com/
 
-_Do you know any other approach ? I would be happy to hear it. Just write on the comment section._
+*Do you know any other approach ? I would be happy to hear it. Just write on the comment section.*
+
+# Footnotes  
+1. <a id="SO-answer-error-message-union-types" class="mce-item-anchor"></a> There is an answer on StackOverflow by some <em>Régis Jean-Gilles</em> that attempts to solve that problem. Did not bother to analyse it. Curious also why Shapeless does not have it (assuming that it works) -https://stackoverflow.com/questions/6909053/enforce-type-difference
 
 # References
 
 1. <a id="programming-in-scala" class="mce-item-anchor"></a> Odersky M., Spoon L., Venners B. Programming in Scala, 3rd Edition  
 
-2. <a id="shapeless" class="mce-item-anchor"></a> Sabin M. https://github.com/milessabin/shapeless
+2. <a id="shapeless" class="mce-item-anchor"></a> Sabin M. https://github.com/milessabin/shapeless  
+
+3. <a id="union-types" class="mce-item-anchor"></a> Sabin M. https://milessabin.com/blog/2011/06/09/scala-union-types-curry-howard/
