@@ -6,14 +6,14 @@ title: Imposing invariants in Scala
 
 
 
-Imagine a opera house allows reservations to a show. For each reservation two people can come: The buyer of the reservation himself, and his guest.  
-As in any show-house, there are many types of seats; some are standing, some normal and some on vip tribunes.
+Imagine a opera house allows reservations to a show. For each reservation two people can come: the buyer of the reservation himself and his guest.  
+As in any show-house, there are many types of seats; some are standing, some normal and some on VIP tribunes.
 
 
 
 As a restriction from the opera house, both buyer and guest must be on the same seating area. For example, it is not permitted for one ticket to be standing while the other for the normal seated area.  
 I believe this is what people call an invariant. A requirement that must hold for the data to have meaning.  
-How to enforce then this constraint ?  
+How to enforce then this constraint?  
 Let us first define the data types relevant to the problem:  
 
 
@@ -68,7 +68,7 @@ Before launching an error, the compiler realizes both <code>Standing</code> and 
 4. Using OOP - subtyping
 
 
-# 1. Using require(condition) on the class constructor of Reservation
+## 1. Using require(condition) on the class constructor of Reservation
 
 ```scala
 case class Reservation[SeatType <: Seat](
@@ -94,7 +94,7 @@ While this is the least adequate of the solutions, we can have the peace of mind
 Notice lastly that extending Reservation does not bypass the constructor, so that the <strong>require(condition)</strong> will always be executed.  
 
 
-# 2. Hiding the public constructor of the class, defining a public one that validates and returns Option[Reservation]
+## 2. Hiding the public constructor of the class, defining a public one that validates and returns Option[Reservation]
 
 
 The idea here is to make it impossible for future users of Reservation to create an instance directly but only through one single method, engineered by us to take into account unlawful constructor parameters. The method ought to return a Reservation boxed in a data type that allows to represent something went wrong like the <code>Option</code>/<code>Try</code>/<code>Either</code>.  
@@ -137,7 +137,7 @@ sealed trait Reservation[SeatType <: Seat] {
 }
 ```
 
-and on the companion object we have the actual implementation:
+And on the companion object we have the actual implementation:
 
 ```scala
 object Reservation {
@@ -161,7 +161,7 @@ Notice the relevance of declaring the trait sealed. It prevents the user from ex
 
 This approach has a disadvantage concerning type erasure which also plagues the next approach using generalized type constraints. We will address the issue there.  
 
-# 3. Using generalized type constrains
+## 3. Using generalized type constrains
 
 This is the most novel of the approaches and, as far as I know, could not be achieved on Java, contrary to the remaining solutions.  
 
@@ -251,7 +251,7 @@ ambiguous implicit values:
 
 The error message is not very helpful, but one must live with it <a id="SO-answer-error-message-union-types-ref" href="#SO-answer-error-message-union-types"> ¹ </a>
 
-This approach, similarly to the 2 other approaches, suffers from an inconvenient. The type <code>SeatType</code> on a given reservation is lost at run time due to type erasure. We cannot pattern match on a given reservation as on the following example:  
+This approach, similarly to the 2 other approaches, suffers from an inconvenience. The type <code>SeatType</code> on a given reservation is lost at run time due to type erasure. We cannot pattern match on a given reservation as on the following example:  
 
 
 ```scala
@@ -275,9 +275,9 @@ Fortunately the type parameter <code>SeatType</code> on Reservation is not a pha
 ```scala
 def guideUsersToSeat(reservation: Reservation[Seat]): String = {
     val userSeat: Seat = reservation.userTicket.seat
-    val guestTicket: Seat = reservation.guestTicket.seat
+    val guestSeat: Seat = reservation.guestTicket.seat
 
-    (userSeat, guestTicket) match {
+    (userSeat, guestSeat) match {
       case (_: Standing.type, _: Standing.type ) => "Go to gate 1"
       case (userSeat: VipTribune, _: VipTribune ) => s"Go to gate 2. Your tribune is named ${userSeat.tribuneId}"
       case (userSeat: NormalSeat, guestSeat: NormalSeat ) => s"Go to gate 3. You and your guest are in a seats ${userSeat.column} and ${guestSeat.column} respectively"
@@ -306,7 +306,7 @@ Because we (arguably) know more than the compiler in this case, we can tell him 
 Which will prevent the warning during compilation.
 
 
-# 4. Using OOP - Subtyping
+## 4. Using OOP - Subtyping
 
 This is the approach most of us would follow. Probably the most pragmatic.
 
@@ -335,7 +335,7 @@ On the other hand, all the type information is carried on at run-time. We can fo
 
 ```scala
 def guideUsersToSeat(reservation: Reservation[Seat]): String = reservation match {
-  case ReservationStanding(_, _) => s"Go to gate 1."
+  case ReservationStanding(_, _) => "Go to gate 1."
   case ReservationSeated(userTicket, guestTicket) => s"Go to gate 2. You and your guest are in a seats ${userTicket.seat.column} and ${guestTicket.seat.column} respectively "
   case ReservationVipTribune(userTicket, _) => s"Go to gate 3. You are on tribune ${userTicket.seat.tribuneId}"
   }
@@ -345,12 +345,12 @@ And because none of our sub-typed Reservation classes has tickets with seats of 
 
 This post is also on the author's blog at []()https://aerodatablog.wordpress.com/
 
-*Do you know any other approach ? I would be happy to hear it. Just write on the comment section.*
+*Do you know any other approach? I would be happy to hear it. Just write on the comment section.*
 
-# Footnotes  
+## Footnotes  
 1. <a id="SO-answer-error-message-union-types" class="mce-item-anchor"></a> There is an answer on StackOverflow by some <em>Régis Jean-Gilles</em> that attempts to solve that problem. Did not bother to analyse it. Curious also why Shapeless does not have it (assuming that it works) -https://stackoverflow.com/questions/6909053/enforce-type-difference
 
-# References
+## References
 
 1. <a id="programming-in-scala" class="mce-item-anchor"></a> Odersky M., Spoon L., Venners B. Programming in Scala, 3rd Edition  
 
