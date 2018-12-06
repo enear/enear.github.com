@@ -27,7 +27,7 @@ case object Standing extends Seat
 
 In what follows it will be useful to discern the type relation above on the following diagram.
 
-<img class=" size-full wp-image-397 aligncenter" src="https://aerodatablog.files.wordpress.com/2018/12/typehiearchy1.png" alt="ActionBuilder" />   
+![type hierarchy](/public/imposing-invariants-in-scala-images/TypeHiearchy.png)
 
 We also have:  
 
@@ -175,7 +175,7 @@ case class Reservation[SeatType <: Seat](
 ```
 the compiler can impose <code>SeatType</code> to have as upper bound the type <code>Seat</code>. It cannot however impose <code>SeatType</code> to be one of the sub-types exclusively. Meaning that upon userTicket: <code>Ticket[VipTribune]</code> and guestTicket: <code>Ticket[NormalSeat]</code>, both <code>VipTribune</code> and <code>NormalSeat</code> can pretend to be type <code>Seat</code> which would result in userTicket: <code>Ticket[Seat]</code> and guestTicket: <code>Ticket[Seat]</code> which in turn conforms with the upper bound constraint (Reservation[SeatType <: Seat]). The issue really is that a given type <code>A</code> is a subtype of itself.
 
-<img class=" size-full wp-image-397 aligncenter" src="https://aerodatablog.files.wordpress.com/2018/12/typehiearchy1.png" alt="ActionBuilder" />      
+![type hierarchy](/public/imposing-invariants-in-scala-images/TypeHiearchy.png)    
 
 
 The trick on this approach is to use a generalized type constraint. These are not built-in features of the language (like type bounds) but rather smart ways some smart people have engineered to leverage the type system of Scala to accomplish some more impressive things.
