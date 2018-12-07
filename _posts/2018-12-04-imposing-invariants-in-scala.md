@@ -322,7 +322,7 @@ case class ReservationSeated(
 
 case class ReservationStanding(
   userTicket: Ticket[Standing.type],
-  guestTicket: Ticket[Standing.type ]
+  guestTicket: Ticket[Standing.type]
 ) extends Reservation[Standing.type]
 
 case class ReservationVipTribune(
