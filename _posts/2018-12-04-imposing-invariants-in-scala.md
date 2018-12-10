@@ -25,7 +25,7 @@ case class VipTribune(tribuneId: String) extends Seat
 case object Standing extends Seat
 ```
 
-In what follows it will be useful to discern the type relation above on the following diagram.
+The following diagram is useful for discerning the relation above and understanding the explanations that follow.
 
 ![type hierarchy](/public/imposing-invariants-in-scala-images/TypeHiearchy.png)
 
