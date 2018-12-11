@@ -56,7 +56,7 @@ val reservation = Reservation(
 )
 ```
 
-The compiler tries to infer the type <code>SeatType</code>for reservation. From the user ticket on line 2 it thinks it is <code>VipTribune</code>. The compiler is satisfied since this is a sub-type of <code>Seat</code> which is an upper type bound on Reservation. This is contradicted on the 3rd line, as we encounter type <code>Standing</code> for the guest ticket. Bad news since type <code>SeatType</code> on line 2 and <code>SeatType</code> on line 3 refer, well, to the same type!  
+The compiler tries to infer the type <code>SeatType</code>for reservation. From user ticket on line 2, it thinks it is <code>VipTribune</code>. The compiler is satisfied since this is a sub-type of <code>Seat</code> which is an upper type bound on Reservation. This is contradicted on the 3rd line, as we encounter type <code>Standing</code> for the guest ticket. Bad news since type <code>SeatType</code> on line 2 and <code>SeatType</code> on line 3 refer, well, to the same type!  
 Before launching an error, the compiler realizes both <code>Standing</code> and <code>VipTribune</code> are actually sub-types of <code>Seat</code>; this means they can pretend to be their super-type (<code>Seat</code>). Because <code>Seat</code> respects the type bound <code>Seat</code> <:  <code>Seat</code>, the compilation is successful with val reservation: <code>Reservation[Seat]</code>.
 
 <strong> There are at least 4 ways to enforce the restriction of the opera-house: </strong>
