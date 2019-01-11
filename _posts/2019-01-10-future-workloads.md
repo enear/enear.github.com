@@ -1,10 +1,10 @@
 ---
 layout: post
-title: keywords: future workloads scheduling
+title: Scala concurrency: performance and scheduling of common workloads with Future
 author: jguitana
 ---
 
-One of the most relevant Scala primitives for concurrency is the `Future`. It represents a value which is either complete or failed, and is scheduled to run outside the program main flow, in some other thread.
+One of the most relevant Scala primitives for concurrency is the `Future`. It represents a value which is either complete or failed, and is scheduled to run outside the program main flow, in some other thread. You can learn more about it [here](https://docs.scala-lang.org/overviews/core/futures.html) if you are not familiar and want to understand this post.
 
 Future enables us to tackle the following concurrency problems:
 1. Let other components execute when one is waiting on IO.
@@ -12,22 +12,14 @@ Future enables us to tackle the following concurrency problems:
 3. Use all the CPU's in our machines.
 4. Enable human-computer interaction (GUIs, terminal).
 
-In this post we will look at three distinct kinds of workloads we can run in a Future: `cpu bound`, `blocking` and `asynchronous`, and gain some intuition about how they perform.
-
-These workloads generally fit in the problems described above as follows:
-1. blocking, async
-2. blocking, async
-3. cpu bound
-4. async
-
-Let's start by introducing each workload in more detail.
+In this post we will look at three distinct kinds of workloads we can run in a Future: `cpu bound`, `blocking` and `asynchronous`, and gain some intuition about how they perform. Let's start by introducing each workload in more detail.
 
 #### Flavors of Future
 
 A `cpu bound` method will be using the cpu all the time. The following simulates such a method.
 
 ```
-def cpuBound(v: Int): Int = {
+def cpuBoundMethod(v: Int): Int = {
     val start = System.currentTimeMillis()
     while ((System.currentTimeMillis() - start) < v) {}
     println(Thread.currentThread())
@@ -35,10 +27,10 @@ def cpuBound(v: Int): Int = {
 }
 ```
 
-We can create a Future with a cpu bound workload that will be delegated to another thread. The OS will then schedule that threads workload to run in one of our cores.
+We can create a Future with a cpu bound workload that will be delegated to another thread. The OS will schedule that thread's workload to run in one of our cores.
 
 ```
-Future(cpuBound(time))
+Future(cpuBoundMethod(time))
 ```
 
 An `asynchronous` method will immediately return a future with a registered callback. Here we use a scheduler to simulate the callback. You should think that the scheduler does not belong to this program.
@@ -47,7 +39,7 @@ An `asynchronous` method will immediately return a future with a registered call
 val scheduler: ScheduledExecutorService =
     Executors.newScheduledThreadPool(1)
 
-def async(v: Int)(implicit ec: ExecutionContext): Future[Int] = {
+def asyncMethod(v: Int)(implicit ec: ExecutionContext): Future[Int] = {
     val promise = Promise[Int]
 
     scheduler.schedule(new Runnable {
@@ -66,13 +58,13 @@ def async(v: Int)(implicit ec: ExecutionContext): Future[Int] = {
 A `blocking` method will put the current thread to sleep using the OS kernel calls. Here `Thread.sleep` happens to make that call.
 
 ```
-def blocking(v: Int): Int = {
+def blockingMethod(v: Int): Int = {
     Thread.sleep(v)
     println(Thread.currentThread)
     v
 }
 
-Future(blocking(time))
+Future(blockingMethod(time))
 ```
 
 All futures are created with the `apply` method, which requires an `ExecutionContext`.
@@ -97,12 +89,18 @@ implicit class FutureOps[T](f: Future[T]) {
 }
 ```
 
+These workloads can be fit to solve the problems described in the first section as such:
+1. Let other components execute when one is waiting on IO. (blockingMethod, asyncMethod)
+2. Make small programs communicate to build larger ones. (blockingMethod, asyncMethod)
+3. Use all the CPU's in our machines. (cpu bound)
+4. Enable human-computer interaction (GUIs, terminal). (asyncMethod)
+
 #### CPU bound
 
 Let's fill up the thread pool and consequentially our cores with actual work.
 
 ```
-Future.sequence(List.fill(1000)(Future(cpuBound(1000)))).await()
+Future.sequence(List.fill(1000)(Future(cpuBoundMethod(1000)))).await()
 ```
 
 On my machine, this produces the following output.
@@ -140,17 +138,17 @@ Creating a future and scheduling it has a cost, and there is a threshold for whe
 
 Simplistically, if creating a future and scheduling it takes **10ms**, and our workload takes **10ms** to finish, then it will most likely perform worse. But if our workload takes **1000ms**, the cost of creating the future is amortized in the total cost, and it will scale.
 
-Let's look at an example. The following runs the `cpuBound` function 4 times **sequentially** in the main thread.
+Let's look at an example. The following runs the `cpuBoundMethod` function 4 times **sequentially** in the main thread.
 
 ```
 val time: Int = ???
-(1 to 4).foreach(cpuBound(time))
+(1 to 4).foreach(cpuBoundMethod(time))
 ```
 
 And using Future instead:
 
 ```
-Future.sequence(List.fill(4)(Future(cpuBound(time)))).await()
+Future.sequence(List.fill(4)(Future(cpuBoundMethod(time)))).await()
 ```
 
 My approximate simplistic results (in ms):
@@ -169,10 +167,10 @@ The above is actually a case of [Amdahl's law](https://en.wikipedia.org/wiki/Amd
 
 ## Blocking
 
-The `blocking` method will produce output similar to the `cpuBound` method, but our cores will not be busy.
+The `blockingMethod` will produce output similar to the `cpuBoundMethod` method, but our cores will not be busy.
 
 ```
-Future.sequence(List.fill(1000)(Future(blocking(1000)))).await()
+Future.sequence(List.fill(1000)(Future(blockingMethod(1000)))).await()
 ```
 
 ```
@@ -198,7 +196,7 @@ Thread[scala-execution-context-global-13,5,main]
 Blocking calls will occupy the threads with no meaningful cpu work. Let's see what happens if we mix blocking and cpu bound workloads and run them on the same thread pool:
 
 ```
-def rand = if (Random.nextInt(100) > 50) Future(cpuBound(1000)) else Future(blocking(1000))
+def rand = if (Random.nextInt(100) > 50) Future(cpuBoundMethod(1000)) else Future(blockingMethod(1000))
 Future.sequence(List.fill(1000)(rand)).await()
 ```
 
@@ -213,11 +211,11 @@ Doing this will cause our application to arbitrarily use the cpu. At some point 
 
 As we can see, if we have heterogeneous workload of cpu intensive tasks and blocking, we are actually wasting resources and slowing down our application. A common solution to this problem has been to accept it as is and just schedule all tasks like we did.
 
-But actually, the better solution is to spawn new threads and use those for blocking calls. We can make our application use an extra 4 threads for blocking calls:
+But actually, the better solution is to spawn new threads and use those for blocking calls. We can make our application use 4 extra threads for blockingMethod calls:
 
 ```
 val blockingContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(4))
-def rand = if (Random.nextInt(100) > 50) Future(cpuBound(1000)) else Future(blocking(1000))(blockingContext)
+def rand = if (Random.nextInt(100) > 50) Future(cpuBoundMethod(1000)) else Future(blockingMethod(1000))(blockingContext)
 Future.sequence(List.fill(1000)(rand)).await()
 ```
 
@@ -251,7 +249,7 @@ The only way around blocking is to go asynchronous, which we will look at next.
 
 ## Asynchronous
 
-Asynchronous calls are fast because a callback informs us of a result, so we are not wasting time waiting. We can understand this by looking at our `async` method. The scheduler is simulating a client side.
+Asynchronous calls are fast because a callback informs us of a result, so we are not wasting time waiting. We can understand this by looking at our `asyncMethod`. The scheduler is simulating a client side.
 
 Let's take for example an arbitrary request. While blocking request may look like this:
 ```
@@ -265,7 +263,7 @@ time 7: wait...
 time 8: Obtain y
 ```
 
-Async will be more like this:
+An asynchronous Future will be more like this:
 ```
 time 1: Request value x
 time 2: Request value y
@@ -274,14 +272,14 @@ time 4: Obtain x
 time 5: Obtain y
 ```
 
-What is the empty space in the async example? Any other work the cpu could be doing. Asynchronous code does not occupy time gaps with waiting.
+What is the empty space in the asynchronous example? Any other work the cpu could be doing. Asynchronous code does not occupy time gaps with waiting.
 
 *Note: The OS will put blocking threads to sleep, so the first example above is actually more efficient than shown here.*
 
 Asynchronous futures are of a different species. All 1000 futures will be complete in ~1000ms.
 
 ```
-Future.sequence(List.fill(1000)(async(1000))).await()
+Future.sequence(List.fill(1000)(asyncMethod(1000))).await()
 ```
 
 ```
@@ -296,7 +294,7 @@ Thread[scala-execution-context-global-12,5,main]
 End
 ```
 
-These being so fast means there is less of a problem with scheduling them in an heterogeneous workload containing `cpuBound` calls, for example.
+These being so fast means there is less of a problem with scheduling them in an heterogeneous workload containing `cpuBoundMethod` calls, for example.
 
 Also note that we have to be careful managing asynchronous futures, as we can go out of memory by creating large amounts of Future objects.
 
@@ -304,7 +302,7 @@ Also note that we have to be careful managing asynchronous futures, as we can go
 
 So far we have used the default `scala.concurrent thread pool` and a `fixed thread pool` in our simple examples. We have scheduled cpu heavy futures in the first, and blocking futures in the second, in order to achieve more throughput.
 
-The Java [Executors](https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/Executors.html) class can spawn other executors, and we can convert them to an `ExecutionContext` as such:
+The Java [Executors](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/concurrent/Executors.html) class can spawn other executors, and we can convert them to an `ExecutionContext` as such:
 
 ```
 ExecutionContext.fromExecutor(Executors.newFixedThreadPool(size))`
@@ -317,7 +315,7 @@ Let's describe all these executors in more detail:
 This executor will run our futures sequentially in a single thread. It uses an unbounded queue for the futures awaiting execution, which means it can eventually throw `OutOfMemoryError`.
 
 ```
-Future.sequence(List.fill(1000)(cpuBound(1000))).await()
+Future.sequence(List.fill(1000)(cpuBoundMethod(1000))).await()
 ```
 
 ```
@@ -338,7 +336,7 @@ This executor will create a new thread each time it is required to run a future.
 Let's look at an example with fast computations where cpu time is equal to 10.
 
 ```
-Future.sequence(List.fill(1000)(cpuBound(10))).await()
+Future.sequence(List.fill(1000)(cpuBoundMethod(10))).await()
 ```
 
 ```
@@ -352,7 +350,7 @@ Thread[pool-2-thread-79,5,main]
 And now with our frequent example where cpu time is 1000.
 
 ```
-Future.sequence(List.fill(1000)(cpuBound(1000))).await()
+Future.sequence(List.fill(1000)(cpuBoundMethod(1000))).await()
 ```
 
 ```
@@ -364,7 +362,6 @@ Thread[pool-2-thread-126,5,main]
 ```
 
 The pool increases from ~82 to ~495 threads from the fast to slower example.
-
 
 ##### `Executors.newFixedThreadPool(size)`
 
@@ -414,12 +411,12 @@ We can explain the level of concurrency for our workloads as such:
 
 | ms        | Method        | Concurrency   |
 |-----------|---------------|---------------|
-| 0         | asynchronous  | Highly asynchronous |
-| 1         | Future(cpuBound(1)) | More asynchronous  |
-| 5         | Future(cpuBound(5)) | Less asynchronous  |
-| x       | cpuBound(x)   | Synchronous |
+| 0         | asyncMethod  | Highly asynchronous |
+| 1         | Future(cpuBoundMethod(1)) | More asynchronous  |
+| 5         | Future(cpuBoundMethod(5)) | Less asynchronous  |
+| x       | cpuBoundMethod(x)   | Synchronous |
 
-We can also visualize it as a function of the `cpuBound` time parameter. A `Future(cpuBound(x))` will be more asynchronous the closer it is to `1 ms`.
+We can also visualize it as a function of the `cpuBoundMethod` time parameter. A `Future(cpuBoundMethod(x))` will be more asynchronous the closer it is to `1 ms`.
 
 ```
 ms
@@ -438,11 +435,11 @@ object FutureApp extends App {
 
     ...
 
-    Future(blocking(1))
+    Future(blockingMethod(1))
 
     ...
 
-    Future(cpuBound(1))
+    Future(cpuBoundMethod(1))
 }
 ```
 
@@ -459,11 +456,11 @@ object FutureApp extends App {
 
     ...
 
-    Future(blocking(1))(blockingExecutor)
+    Future(blockingMethod(1))(blockingExecutor)
 
     ...
 
-    Future(cpuBound(1))
+    Future(cpuBoundMethod(1))
 }
 ```
 
@@ -471,7 +468,7 @@ This is a micro management approach that can work when dealing with small code b
 
 ##### Explicitly implicitly
 
-We can improve on the above by typing our futures and thus marking them as blocking. This makes re utilization safer.
+We can improve on the above by typing our futures and thus marking them as blocking. This makes reutilization safer.
 
 ```
 val defaultExecutor: ExecutionContext =  scala.concurrent.ExecutionContext.Implicits.global
@@ -481,14 +478,14 @@ case class BlockingContext(executionContext: ExecutionContext)
 
 def markedBlocking(value: Int)(implicit blockingContext: BlockingContext) = {
     implicit val ec = blockingContext.executionContext
-    Future(blocking(value))
+    Future(blockingMethod(value))
 }
 
 markedBlocking(10)(BlockingContext(blockingExecutor)) // compiles
 markedBlocking(10)(defaultExecutor) // does not compile
 ```
 
-The `markedBlocking` method would be public and used in place of our initial `blocking` method. This approach solves the boilerplate and risk of passing executors explicitly, documents our code and makes it safer for larger teams to understand where code requires a different execution strategy.
+The `markedBlocking` method would be public and used in place of our initial `blockingMethod`. This approach solves the boilerplate and risk of passing executors explicitly, documents our code and makes it safer for larger teams to understand where code requires a different execution strategy.
 
 #### Interlude
 
@@ -498,6 +495,6 @@ We have seen how to manage `blocking`, which is a special case where we [delegat
 
 We have also seen how an `asynchronous` method interacts with a future. Our asynchronous method is actually a special case where no computation is involved in our program, often referred to as asynchronous IO.
 
-The `cpuBound` method remains as the most frequent workload a common application will probably have. We have shown [here](#cpu-bound-pool), [here](#cpu-bound) and [here](#thread-pools) how changing the running time and thus level of concurrency can impact our choices.
+`cpu bound` remains as the most frequent workload a common application will probably have. We have shown [here](#cpu-bound-pool), [here](#cpu-bound) and [here](#thread-pools) how changing the running time and thus level of concurrency can impact our choices.
 
 In a `Future(post)` we will be looking at the performance considerations of `Future` itself, and how it differs from current alternatives.
