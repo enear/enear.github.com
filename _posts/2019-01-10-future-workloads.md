@@ -89,11 +89,11 @@ implicit class FutureOps[T](f: Future[T]) {
 }
 ```
 
-These workloads can be fit to solve the problems described in the first section as such:
-1. Let other components execute when one is waiting on IO. (blockingMethod, asyncMethod)
-2. Make small programs communicate to build larger ones. (blockingMethod, asyncMethod)
+We can think of these workloads as solving the problems described in the first section as such:
+1. Let other components execute when one is waiting on IO. (blocking, asynchronous)
+2. Make small programs communicate to build larger ones. (blocking, asynchronous)
 3. Use all the CPU's in our machines. (cpu bound)
-4. Enable human-computer interaction (GUIs, terminal). (asyncMethod)
+4. Enable human-computer interaction (GUIs, terminal). (asynchronous)
 
 #### CPU bound
 
