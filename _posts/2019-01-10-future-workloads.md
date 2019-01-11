@@ -165,7 +165,7 @@ At 20ms, Future is too costly, At 40ms, Future begins to hit the threshold. At 5
 
 The above is actually a case of [Amdahl's law](https://en.wikipedia.org/wiki/Amdahl%27s_law). The serial part would be the overhead of creating Future in the main thread.
 
-## Blocking
+#### Blocking
 
 The `blockingMethod` will produce output similar to the `cpuBoundMethod` method, but our cores will not be busy.
 
@@ -247,7 +247,7 @@ The downside is that spawning more threads than there are cores will eventually 
 
 The only way around blocking is to go asynchronous, which we will look at next.
 
-## Asynchronous
+#### Asynchronous
 
 Asynchronous calls are fast because a callback informs us of a result, so we are not wasting time waiting. We can understand this by looking at our `asyncMethod`. The scheduler is simulating a client side.
 
