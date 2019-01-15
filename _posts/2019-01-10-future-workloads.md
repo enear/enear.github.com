@@ -161,7 +161,7 @@ My approximate simplistic results (in ms):
 | time = 500  | 2000       | 594    |
 | time = 1000 | 4000       | 1103   |
 
-At 20ms, Future is too costly, At 40ms, Future begins to hit the threshold. At 500ms and 1000ms it scales better.
+At 20ms, Future is too costly. At 40ms, Future begins to hit the threshold. At 500ms and 1000ms it scales better.
 
 The above is actually a case of [Amdahl's law](https://en.wikipedia.org/wiki/Amdahl%27s_law). The serial part would be the overhead of creating Future in the main thread.
 
@@ -495,6 +495,6 @@ We have seen how to manage `blocking`, which is a special case where we [delegat
 
 We have also seen how an `asynchronous` method interacts with a future. Our asynchronous method is actually a special case where no computation is involved in our program, often referred to as asynchronous IO.
 
-`cpu bound` remains as the most frequent workload a common application will probably have. We have shown [here](#cpu-bound-pool), [here](#cpu-bound) and [here](#thread-pools) how changing the running time and thus level of concurrency can impact our choices.
+`cpu bound` probably remains as the most frequent workload a common application will have. We have shown [here](#cpu-bound-pool), [here](#cpu-bound) and [here](#thread-pools) how changing the running time and thus level of concurrency can impact our choices.
 
 In a `Future(post)` we will be looking at the performance considerations of `Future` itself, and how it differs from current alternatives.
