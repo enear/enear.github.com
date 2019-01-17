@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Scala concurrency: performance and scheduling of common workloads with Future
+title: "Scala concurrency: performance and scheduling of common workloads with Future"
 author: jguitana
 ---
 
